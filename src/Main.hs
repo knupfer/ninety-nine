@@ -3,69 +3,90 @@ module Main where
 import Test.Invariant
 import Test.Tasty
 import Test.Tasty.QuickCheck
+import Control.Arrow
 import Data.List
 
 main :: IO ()
 main = defaultMain $
   testGroup "Tests"
-    [ testProperty "Problem 1"   $
-                  (>1) . length &> problem1 <~~ (tail :: [Int] -> [Int])
-    , testProperty "Problem 2"   $
-                  (>2) . length &> problem2 <~~ (tail :: [Int] -> [Int])
-    , testProperty "Problem 3"     prop_problem3
-    , testProperty "Problem 4"   $ problem4 <~~ (reverse :: [Int] -> [Int])
-    , testProperty "Problem 5.1" $ involutory   (problem5 :: [Int] -> [Int])
-    , testProperty "Problem 5.2" $ length   <~~ (problem5 :: [Int] -> [Int])
-    , testProperty "Problem 5.3" $ reverse  @~> (problem5 :: [Int] -> [Int])
-    , testProperty "Problem 6"   $ problem6 <~~ (reverse :: [Int] -> [Int])
-    , testProperty "Problem 8.1" $ deflating (problem8 :: [Int] -> [Int])
-    , testProperty "Problem 8.2" $ reverse . problem8 <=> problem8 . (reverse :: [Int] -> [Int])
-    , testProperty "Problem 8.3" $ idempotent (problem8 :: [Int] -> [Int])
-    , testProperty "Problem 8.4" $ problem8 <=> (problem8' :: [Int] -> [Int])
+    [ p "P  1"   $ (>1) . length &> p1 <~~ (tail          :: [Int] -> [Int])
+    , p "P  2"   $ (>2) . length &> p2 <~~ (tail          :: [Int] -> [Int])
+    , p "P  3"     prop_p3
+    , p "P  4"   $ p4                  <~~ (reverse       :: [Int] -> [Int])
+    , p "P  5.1" $ involutory              (p5            :: [Int] -> [Int])
+    , p "P  5.2" $ length              <~~ (p5            :: [Int] -> [Int])
+    , p "P  5.3" $ reverse             @~> (p5            :: [Int] -> [Int])
+    , p "P  6"   $ p6                  <~~ (reverse       :: [Int] -> [Int])
+    , p "P  8.1" $ deflating               (p8            :: [Int] -> [Int])
+    , p "P  8.2" $ p8                  <?> (reverse       :: [Int] -> [Int])
+    , p "P  8.3" $ idempotent              (p8            :: [Int] -> [Int])
+    , p "P  8.4" $ p8                  <=> (p8'           :: [Int] -> [Int])
+    , p "P  9.1" $ deflating               (p9            :: [Int] -> [[Int]])
+    , p "P  9.2" $ reverse . p9        <=> (p9 . reverse  :: [Int] -> [[Int]])
+    , p "P 10.1" $ deflating               (p10           :: [Int] -> [(Int,Int)])
+    , p "P 10.1" $ reverse . p10       <=> (p10 . reverse :: [Int] -> [(Int,Int)])
+    , p "P 11"   $ deflating               (p11           :: [Int] -> [Runner Int])
+    , p "P 11"   $ p11 . reverse       <=> (reverse . p11 :: [Int] -> [Runner Int])
     ]
 
-problem1 :: [a] -> a
-problem1 = last
+p :: Testable a => TestName -> a -> TestTree
+p = testProperty
 
-problem2 :: [a] -> Maybe a
-problem2 xs
+p1 :: [a] -> a
+p1 = last
+
+p2 :: [a] -> Maybe a
+p2 xs
        | length xs > 1 = Just . head . drop 1 $ reverse xs
        | otherwise     = Nothing
 
-prop_problem3 :: [Int] -> Int -> Property
-prop_problem3 xs n = not (null xs)
+prop_p3 :: [Int] -> Int -> Property
+prop_p3 xs n = not (null xs)
                   && n > 0
-                  && n <= length xs ==> problem3 xs n `elem` map Just xs
+                  && n <= length xs ==> p3 xs n `elem` map Just xs
 
-problem3 :: [a] -> Int -> Maybe a
-problem3 xs n
+p3 :: [a] -> Int -> Maybe a
+p3 xs n
        | n <= 0        = Nothing
        | n > length xs = Nothing
        | otherwise     = Just $ xs !! (n-1)
 
-prop_problem4 :: [Int] -> Property
-prop_problem4 xs = problem4 xs === length xs
+prop_p4 :: [Int] -> Property
+prop_p4 xs = p4 xs === length xs
 
-problem4 :: [a] -> Int
-problem4 (_:xs) = 1 + problem4 xs
-problem4 [] = 0
+p4 :: [a] -> Int
+p4 (_:xs) = 1 + p4 xs
+p4 [] = 0
 
-problem5 :: [a] -> [a]
-problem5 (x:xs) = problem5 xs ++ [x]
-problem5 _ = []
+p5 :: [a] -> [a]
+p5 (x:xs) = p5 xs ++ [x]
+p5 _ = []
 
-problem6 :: Eq a => [a] -> Bool
-problem6 = reverse <=> id
+p6 :: Eq a => [a] -> Bool
+p6 = reverse <=> id
 
 data Lisp a = Leaf a | Branch [Lisp a]
 
-problem7 :: Lisp a -> [a]
-problem7 (Leaf a) = [a]
-problem7 (Branch xs) = concatMap problem7 xs
+p7 :: Lisp a -> [a]
+p7 (Leaf a) = [a]
+p7 (Branch xs) = concatMap p7 xs
 
-problem8 :: Eq a => [a] -> [a]
-problem8 (x:xs) = x: problem8 (dropWhile (==x) xs)
-problem8 [] = []
+p8 :: Eq a => [a] -> [a]
+p8 (x:xs) = x: p8 (dropWhile (==x) xs)
+p8 [] = []
 
-problem8' :: Eq a => [a] -> [a]
-problem8' = map head . group
+p8' :: Eq a => [a] -> [a]
+p8' = map head . group
+
+p9 :: Eq a => [a] -> [[a]]
+p9 = group
+
+p10 :: Eq a => [a] -> [(Int,a)]
+p10 = map (length &&& head) . group
+
+data Runner a = Single a | Multiple (Int, a) deriving Eq
+
+p11 :: Eq a => [a] -> [Runner a]
+p11 = map (toRunner . (length &&& head)) . group
+  where toRunner (n, x) | n <= 1    = Single x
+                        | otherwise = Multiple (n, x)
