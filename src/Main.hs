@@ -51,7 +51,17 @@ arity1 =  testGroup "Arity 1"
   , p "P 28.2b"$ length              <~~ (p28b          :: [[Int]] -> [[Int]])
   , p "P 28.3b"$ sort                <~~ (p28b          :: [[Int]] -> [[Int]])
   , p "P 28.4b"$ p28b                <=> (p28b'         :: [[Int]] -> [[Int]])
-  , p "P 28.5b"$ p28b                <=> (p28b''        :: [[Int]] -> [[Int]])
+--, p "P 28.5b"$ p28b                <=> (p28b''        :: [[Int]] -> [[Int]])
+  , p "P 31.1" $ (>1) &> const False <=> p31 . (*2)
+  , p "P 31.2" $ (<1) &> const False <=> p31
+  , p "P 31.3" $ \x -> x>2 && p31 x  ==> odd x
+  , p "P 34.1" $ p34 `cyclesWithin` 100
+  , p "P 34.2" $ \x -> x>1           ==> p34 x < x
+  , p "P 34.3" $ (<1) &> const 0     <=> p34
+  , p "P 34.4" $ \x y -> gcd x y==1  ==> p34 (abs $ x*y) == p34 (abs x) * p34 (abs y)
+  , p "P 35"   $ (>1) &> product     @~> p35
+  , p "P 36"   $ \x -> length (p35 x) >= length (p36 x)
+  , p "P 37"   $ p37                 <=> p34
   ]
 
 arity2 :: TestTree
@@ -60,10 +70,10 @@ arity2 =  testGroup "Arity 2"
   , p "P 15.1" $ \xs n   -> p15 (reverse xs) n == reverse (p15 (xs::[Int]) n)
   , p "P 15.2" $ \xs n   -> n > 0 ==> length (p15 (xs :: [Int]) n) >= length xs
   , p "P 16.1" $ \xs n   -> length (p16 xs n) <= length (xs :: [Int])
-  , p "P 16.2" $ p16               <<=>> (p16'          :: [Int] -> Int -> [Int])
+  , p "P 16.2" $ \xs x   -> p16 xs x == (p16' xs x ::  [Int])
   , p "P 17"   $ \xs n   -> uncurry (++) (p17 xs n) == (xs :: [Int])
   , p "P 18"   $ \xs a b -> length xs >= length (p18 (xs :: [Int]) a b)
-  , p "P 19.1" $ (.) length . p19'  <<=> (length :: [Int] -> Int)
+  , p "P 19.1" $ \xs x   -> length (p19' xs x)  == length (xs :: [Int])
   , p "P 19.2" $ flip (p19' :: [Int] -> Int -> [Int]) 2 `cyclesWithin` 100
   , p "P 20"   $ \xs n   -> length xs >= length (p20 (xs :: [Int]) n)
   , p "P 22"   $ \a b    -> max 0 (b - a + 1) == length (p22 a b)
@@ -77,6 +87,11 @@ arity2 =  testGroup "Arity 2"
   , p "P 26.3" $ \xs     ->  length xs > 2 ==> length xs <= length (p26 (xs :: [Int]) 2)
   , p "P 26.4" $ \xs     ->  sort (p26 (reverse xs) 2) == sort (map reverse (p26 (xs :: [Int]) 2))
 -- !!
+  , p "P 32.1" $ \x y -> x /= 0 && y /= 0 ==> x `mod` p32 x y == y `mod` p32 x y
+  , p "P 32.2" $ \x y -> p32 x y == p32 y x
+  , p "P 32.3" $ \x y -> x > 0 && y > 0 ==> p32 x y == p32' x y
+  , p "P 33.1" $ \x y -> p33 x y == p33 y x
+  , p "P 33.2" $ \x y -> p33 x y == (p32 x y == 1)
   ]
 
 arity3 :: TestTree
@@ -210,3 +225,44 @@ p28b' xs = sortOn (length . flip filter xs . ((==) `on` length)) xs
 
 p28b'' :: [[a]] -> [[a]]
 p28b'' = concat . sortOn length . groupBy ((==) `on` length) . sortOn length
+
+p31 :: Integer -> Bool
+p31 n = (==) n . head . dropWhile (<n) $ primes
+  where primes = sieve [2..]
+        sieve (x:xs) = x: sieve (filter ((/=) 0 . flip mod x) xs)
+        sieve _      = []
+
+p32 :: Integer -> Integer -> Integer
+p32 = gcd
+
+p32' :: Integer -> Integer -> Integer
+p32' 0 y = abs y
+p32' x y = p32' (abs (x-y)) $ min (abs x) (abs y)
+
+p33 :: Integer -> Integer -> Bool
+p33 = ((1==) .) . p32
+
+p34 :: Int -> Int
+p34 x = length $ filter ((==) 1 . gcd x) [1..x]
+
+p35 :: Int -> [Int]
+p35 x = step x $ takeWhile (<=x) primes
+  where step _  []     = []
+        step x' (y:ys) = if x' `mod` y == 0 then y:step (x' `div` y) (y:ys)
+                                            else step x' ys
+        primes = sieve [2..]
+        sieve (y:ys) = y: sieve (filter ((/=) 0 . flip mod y) ys)
+        sieve _      = []
+
+p36 :: Int -> [(Int, Int)]
+p36 = map (head &&& length) . group . p35
+
+p37 :: Int -> Int
+p37 n | n < 1 = 0
+p37 n = product [(a-1) * a^(b-1) | (a,b) <- p36 n]
+
+p39 :: Int -> Int -> [Int]
+p39 a b = takeWhile (<=b) $ dropWhile (<a) primes
+  where primes = sieve [2..]
+        sieve (y:ys) = y: sieve (filter ((/=) 0 . flip mod y) ys)
+        sieve _      = []
