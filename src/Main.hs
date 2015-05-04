@@ -6,46 +6,56 @@ import Test.Tasty.QuickCheck
 import Control.Arrow
 import Data.List
 import System.Random
+import Data.Function
 
 main :: IO ()
 main = defaultMain $ testGroup "Tests"
- [ arity1
- , arity2
- ]
+  [ arity1
+  , arity2
+  , arity3
+  ]
 
 arity1 :: TestTree
 arity1 =  testGroup "Arity 1"
-  [ p "P  1"   $ (>1) . length &> p1 <~~ (tail          :: [Int] -> [Int])
-  , p "P  2"   $ (>2) . length &> p2 <~~ (tail          :: [Int] -> [Int])
-  , p "P  4.1" $ p4                  <~~ (reverse       :: [Int] -> [Int])
-  , p "P  4.2" $ p4                  <=> (length        :: [Int] -> Int)
-  , p "P  5.1" $ involutory              (p5            :: [Int] -> [Int])
-  , p "P  5.2" $ length              <~~ (p5            :: [Int] -> [Int])
-  , p "P  5.3" $ reverse             @~> (p5            :: [Int] -> [Int])
-  , p "P  6"   $ p6                  <~~ (reverse       :: [Int] -> [Int])
-  , p "P  7.1" $ p7 . N . map L      <=> (id            :: [Int] -> [Int])
-  , p "P  7.2" $ p7 . N . map L      <?> (reverse       :: [Int] -> [Int])
-  , p "P  8.1" $ deflating               (p8            :: [Int] -> [Int])
-  , p "P  8.2" $ p8                  <?> (reverse       :: [Int] -> [Int])
-  , p "P  8.3" $ idempotent              (p8            :: [Int] -> [Int])
-  , p "P  8.4" $ p8                  <=> (p8'           :: [Int] -> [Int])
-  , p "P  9.1" $ deflating               (p9            :: [Int] -> [[Int]])
-  , p "P  9.2" $ reverse . p9        <=> (p9 . reverse  :: [Int] -> [[Int]])
-  , p "P 10.1" $ deflating               (p10           :: [Int] -> [(Int,Int)])
-  , p "P 10.2" $ reverse . p10       <=> (p10 . reverse :: [Int] -> [(Int,Int)])
-  , p "P 11.1" $ deflating               (p11           :: [Int] -> [Runner Int])
-  , p "P 11.2" $ p11 . reverse       <=> (reverse . p11 :: [Int] -> [Runner Int])
-  , p "P 12"   $ p12                 @~> (p11           :: [Int] -> [Runner Int])
-  , p "P 13"   $ p13                 <=> (p11           :: [Int] -> [Runner Int])
-  , p "P 14.1" $ inflating               (p14           :: [Int] -> [Int])
-  , p "P 14.2" $ reverse             <?> (p14           :: [Int] -> [Int])
-  , p "P 14.3" $ monotonicIncreasing'    (p14           :: [Int] -> [Int])
-  , p "P 25.1" $ length              <~~ (p25           :: [Int] -> [Int])
-  , p "P 25.2" $ sort                <=> (sort . p25    :: [Int] -> [Int])
+  [ p "P  1"   $ (>1) . length &> p1 <~~ (tail          :: [Int]   -> [Int])
+  , p "P  2"   $ (>2) . length &> p2 <~~ (tail          :: [Int]   -> [Int])
+  , p "P  4.1" $ p4                  <~~ (reverse       :: [Int]   -> [Int])
+  , p "P  4.2" $ p4                  <=> (length        :: [Int]   -> Int)
+  , p "P  5.1" $ involutory              (p5            :: [Int]   -> [Int])
+  , p "P  5.2" $ length              <~~ (p5            :: [Int]   -> [Int])
+  , p "P  5.3" $ reverse             @~> (p5            :: [Int]   -> [Int])
+  , p "P  6"   $ p6                  <~~ (reverse       :: [Int]   -> [Int])
+  , p "P  7.1" $ p7 . N . map L      <?> (reverse       :: [Int]   -> [Int])
+  , p "P  7.2" $ p7                  @~> (N . map L     :: [Int]   -> Lisp Int)
+  , p "P  8.1" $ deflating               (p8            :: [Int]   -> [Int])
+  , p "P  8.2" $ p8                  <?> (reverse       :: [Int]   -> [Int])
+  , p "P  8.3" $ idempotent              (p8            :: [Int]   -> [Int])
+  , p "P  8.4" $ p8                  <=> (p8'           :: [Int]   -> [Int])
+  , p "P  9.1" $ deflating               (p9            :: [Int]   -> [[Int]])
+  , p "P  9.2" $ reverse . p9        <=> (p9 . reverse  :: [Int]   -> [[Int]])
+  , p "P 10.1" $ deflating               (p10           :: [Int]   -> [(Int,Int)])
+  , p "P 10.2" $ reverse . p10       <=> (p10 . reverse :: [Int]   -> [(Int,Int)])
+  , p "P 11.1" $ deflating               (p11           :: [Int]   -> [Runner Int])
+  , p "P 11.2" $ p11 . reverse       <=> (reverse . p11 :: [Int]   -> [Runner Int])
+  , p "P 12"   $ p12                 @~> (p11           :: [Int]   -> [Runner Int])
+  , p "P 13"   $ p13                 <=> (p11           :: [Int]   -> [Runner Int])
+  , p "P 14.1" $ inflating               (p14           :: [Int]   -> [Int])
+  , p "P 14.2" $ reverse             <?> (p14           :: [Int]   -> [Int])
+  , p "P 14.3" $ monotonicIncreasing'    (p14           :: [Int]   -> [Int])
+  , p "P 25.1" $ length              <~~ (p25           :: [Int]   -> [Int])
+  , p "P 25.2" $ sort                <=> (sort . p25    :: [Int]   -> [Int])
+  , p "P 28.1a"$ idempotent              (p28a          :: [[Int]] -> [[Int]])
+  , p "P 28.2a"$ length              <~~ (p28a          :: [[Int]] -> [[Int]])
+  , p "P 28.3a"$ sort                <~~ (p28a          :: [[Int]] -> [[Int]])
+  , p "P 28.1b"$ idempotent              (p28b          :: [[Int]] -> [[Int]])
+  , p "P 28.2b"$ length              <~~ (p28b          :: [[Int]] -> [[Int]])
+  , p "P 28.3b"$ sort                <~~ (p28b          :: [[Int]] -> [[Int]])
+  , p "P 28.4b"$ p28b                <=> (p28b'         :: [[Int]] -> [[Int]])
+  , p "P 28.5b"$ p28b                <=> (p28b''        :: [[Int]] -> [[Int]])
   ]
 
 arity2 :: TestTree
-arity2 = testGroup "Arity 2"
+arity2 =  testGroup "Arity 2"
   [ p "P  3"   $ \xs x   -> maybe True (`elem`xs) (p3 (xs :: [Int]) x)
   , p "P 15.1" $ \xs n   -> p15 (reverse xs) n == reverse (p15 (xs::[Int]) n)
   , p "P 15.2" $ \xs n   -> n > 0 ==> length (p15 (xs :: [Int]) n) >= length xs
@@ -56,13 +66,23 @@ arity2 = testGroup "Arity 2"
   , p "P 19.1" $ (.) length . p19'  <<=> (length :: [Int] -> Int)
   , p "P 19.2" $ flip (p19' :: [Int] -> Int -> [Int]) 2 `cyclesWithin` 100
   , p "P 20"   $ \xs n   -> length xs >= length (p20 (xs :: [Int]) n)
-  , p "P 21.1" $ \i xs n -> length xs + 1 == length (p21 (i :: Int) xs n)
-  , p "P 21.2" $ \i xs n -> xs == p20 (p21 (i :: Int) xs n) n
   , p "P 22"   $ \a b    -> max 0 (b - a + 1) == length (p22 a b)
   , p "P 23.1" $ \xs n   -> not (null xs) && n >= 0 ==> n == length (p23 (xs :: [Int]) n)
   , p "P 23.2" $ \xs n   -> not (null xs) ==> all (`elem` xs) (p23 (xs :: [Int]) n)
   , p "P 24.1" $ \x y    -> x <= y ==> max 0 x == length (p24 x y)
   , p "P 24.2" $ \x y    -> x <= y ==> all (`elem` [1..y]) (p24 x y)
+-- !!
+  , p "P 26.1" $ \xs     ->  length xs == length (p26 (xs :: [Int]) 1)
+  , p "P 26.2" $ \xs     ->  sort (p26 (reverse xs) 1) == sort (map reverse (p26 (xs :: [Int]) 1))
+  , p "P 26.3" $ \xs     ->  length xs > 2 ==> length xs <= length (p26 (xs :: [Int]) 2)
+  , p "P 26.4" $ \xs     ->  sort (p26 (reverse xs) 2) == sort (map reverse (p26 (xs :: [Int]) 2))
+-- !!
+  ]
+
+arity3 :: TestTree
+arity3 =  testGroup "Arity 3"
+  [ p "P 21.1" $ \i xs n -> length xs + 1 == length (p21 (i :: Int) xs n)
+  , p "P 21.2" $ \i xs n -> xs            == p20 (p21 (i :: Int) xs n) n
   ]
 
 p :: Testable a => TestName -> a -> TestTree
@@ -124,9 +144,9 @@ p12 = concatMap fromRunner
 p13 :: Eq a => [a] -> [Runner a]
 p13 []     = []
 p13 (x:xs) = toRunner (1,x) xs
-  where toRunner (n,x') []               = [f n x']
-        toRunner (n,x') (y:ys) | y == x' = toRunner (n+1,y) ys
+  where toRunner (n,x') (y:ys) | y == x' = toRunner (n+1,y) ys
                                | y /= x' = f n x' : toRunner (1,y) ys
+        toRunner (n,x') _                = [f n x']
         f n x' = if n > 1 then Multiple (n, x')
                           else Single x'
 
@@ -171,3 +191,22 @@ p24 m n | m <= n = take m . nub . randomRs (1, n) $ mkStdGen 0
 
 p25 :: [a] -> [a]
 p25 xs = map (xs!!) . take (length xs) . nub . randomRs (0, length xs - 1) $ mkStdGen 0
+
+-- Tricky !
+p26 :: [a] -> Int -> [[a]]
+p26 _ 0  = [[]]
+p26 xs n = [ y:ys | y:xs' <- tails xs , ys <- p26 xs' (n-1)]
+
+-- TODO: p27 = undefined
+
+p28a :: [[a]] -> [[a]]
+p28a = sortOn length
+
+p28b :: [[a]] -> [[a]]
+p28b xs = sortOn (\x -> length $ filter (\y -> length x == length y) xs) xs
+
+p28b' :: [[a]] -> [[a]]
+p28b' xs = sortOn (length . flip filter xs . ((==) `on` length)) xs
+
+p28b'' :: [[a]] -> [[a]]
+p28b'' = concat . sortOn length . groupBy ((==) `on` length) . sortOn length
