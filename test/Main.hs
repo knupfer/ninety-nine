@@ -4,6 +4,7 @@ import Test.Invariant
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import Control.Arrow
+import Control.Monad
 import Data.List
 import System.Random
 import Data.Function
@@ -16,7 +17,7 @@ main = defaultMain $ testGroup "Tests"
   ]
 
 arity1 :: TestTree
-arity1 =  testGroup "Arity 1"
+arity1 = testGroup "Arity 1"
   [ p "P  1"   $ (>1) . length &> p1 <~~ (tail          :: [Int]   -> [Int])
   , p "P  2"   $ (>2) . length &> p2 <~~ (tail          :: [Int]   -> [Int])
   , p "P  4.1" $ p4                  <~~ (reverse       :: [Int]   -> [Int])
@@ -66,7 +67,7 @@ arity1 =  testGroup "Arity 1"
   ]
 
 arity2 :: TestTree
-arity2 =  testGroup "Arity 2"
+arity2 = testGroup "Arity 2"
   [ p "P  3"   $ \xs x   -> maybe True (`elem`xs) (p3 (xs :: [Int]) x)
   , p "P 15.1" $ \xs n   -> p15 (reverse xs) n == reverse (p15 (xs::[Int]) n)
   , p "P 15.2" $ \xs n   -> n > 0 ==> length (p15 (xs :: [Int]) n) >= length xs
@@ -150,7 +151,6 @@ p10 :: Eq a => [a] -> [(Int,a)]
 p10 = map (length &&& head) . group
 
 data Runner a = Single a | Multiple (Int, a) deriving Eq
-
 p11 :: Eq a => [a] -> [Runner a]
 p11 = map (toRunner . (length &&& head)) . group
   where toRunner (n, x) | n <= 1    = Single x
@@ -259,7 +259,7 @@ p35 x = step x $ takeWhile (<=x) primes
                                             else step x' ys
 
 p36 :: Int -> [(Int, Int)]
-p36 = map (head &&& length) . group . p35
+p36 =  map (head &&& length) . group . p35
 
 p37 :: Int -> Int
 p37 n | n < 1 = 0
@@ -277,6 +277,19 @@ p41a x y = concatMap (\n -> go n $ takeWhile (<n) primes) [x,x+2..y]
   where go n xs = [(a,b) | a <- xs, b <- xs, a <= b, a + b == n]
 
 -- TODO: Is this correct?
-p41b :: Int -> Int -> Int-> [(Int,Int)]
+p41b :: Int -> Int -> Int -> [(Int,Int)]
 p41b x y lim = concatMap (\n -> take 1 . go n . filter (>lim) $ takeWhile (<n) primes) [x,x+2..y]
   where go n xs = [(a,b) | a <- xs, b <- xs, a <= b, a + b == n]
+
+p46 :: (Bool -> Bool -> Bool) -> [(Bool, Bool, Bool)]
+p46 f = [(a, b, f a b) | a <- [True,False], b <- [True,False]]
+or'   x y = x || y
+and'  x y = x && y
+nand' x y = not (x && y)
+nor'  x y = not (x || y)
+xor'  x y = x && not y || y && not x
+impl' x y = not x && y
+equ'  x y = x == y
+
+p48 :: ([Bool] -> Bool) -> Int -> [([Bool], Bool)]
+p48 f n = [(bs, f bs) | bs <- replicateM n [True,False]]
