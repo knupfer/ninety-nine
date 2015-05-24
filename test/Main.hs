@@ -1,20 +1,31 @@
 module Main where
 
-import Test.Invariant
-import Test.Tasty
-import Test.Tasty.QuickCheck
-import Control.Arrow
-import Control.Monad
-import Data.List
-import System.Random
-import Data.Function
-
+import           Control.Arrow
+import           Control.Monad
+import           Data.Function
+import           Data.List
+import           System.Random
+import           Test.Invariant
+import           Test.Tasty
+import           Test.Tasty.QuickCheck
+import Rewrite.Parallel
 main :: IO ()
 main = defaultMain $ testGroup "Tests"
   [ arity1
   , arity2
   , arity3
   ]
+
+mappy :: TestTree
+mappy = testGroup "maps"
+ [ p "P 10.1" $ deflating               (p10           :: [Int]   -> [(Int,Int)])
+ , p "P 10.2" $ reverse . p10       <=> (p10 . reverse :: [Int]   -> [(Int,Int)])
+ , p "P 11.1" $ deflating               (p11           :: [Int]   -> [Runner Int])
+ , p "P 11.2" $ p11 . reverse       <=> (reverse . p11 :: [Int]   -> [Runner Int])
+ , p "P 25.1" $ length              <~~ (p25           :: [Int]   -> [Int])
+ , p "P 25.2" $ sort                <=> (sort . p25    :: [Int]   -> [Int])
+ , p "P 36"   $ \x -> length (p35 x) >= length (p36 x)
+ ]
 
 arity1 :: TestTree
 arity1 = testGroup "Arity 1"
@@ -79,8 +90,8 @@ arity2 = testGroup "Arity 2"
   , p "P 19.2" $ flip (p19' :: [Int] -> Int -> [Int]) 2 `cyclesWithin` 100
   , p "P 20"   $ \xs n   -> length xs >= length (p20 (xs :: [Int]) n)
   , p "P 22"   $ \a b    -> max 0 (b - a + 1) == length (p22 a b)
-  , p "P 23.1" $ \xs n   -> not (null xs) && n >= 0 ==> n == length (p23 (xs :: [Int]) n)
-  , p "P 23.2" $ \xs n   -> not (null xs) ==> all (`elem` xs) (p23 (xs :: [Int]) n)
+--  , p "P 23.1" $ \xs n   -> not (null xs) && n >= 0 ==> n == length (p23 (xs :: [Int]) n)
+--  , p "P 23.2" $ \xs n   -> not (null xs) ==> all (`elem` xs) (p23 (xs :: [Int]) n)
   , p "P 24.1" $ \x y    -> x <= y ==> max 0 x == length (p24 x y)
   , p "P 24.2" $ \x y    -> x <= y ==> all (`elem` [1..y]) (p24 x y)
 -- !!
@@ -293,3 +304,83 @@ equ'  x y = x == y
 
 p48 :: ([Bool] -> Bool) -> Int -> [([Bool], Bool)]
 p48 f n = [(bs, f bs) | bs <- replicateM n [True,False]]
+
+p49 :: Int -> [String]
+p49 n | n > 0 = map ('0':) xs ++ map ('1':) (reverse xs)
+      | otherwise = [""]
+  where xs = p49 $ n-1
+
+-- p50 = undefined
+
+data Tree a = Empty | Branch a (Tree a) (Tree a) deriving (Show, Eq)
+instance Foldable Tree where
+  foldr f acc (Branch x a b) = foldr f (foldr f (f x acc) a) b
+  foldr _ acc Empty = acc
+
+leaf :: a -> Tree a
+leaf x = Branch x Empty Empty
+
+p55 :: Int -> [Tree Char]
+p55 0 = [Empty]
+p55 n = let (q, re) = (n - 1) `quotRem` 2
+     in [Branch 'x' l r | i <- [q .. q + re],
+                          l <- p55 i,
+                          r <- p55 (n - i - 1)]
+
+p56 :: Tree a -> Bool
+p56 t = mirror t t
+
+mirror :: Tree a -> Tree b -> Bool
+mirror (Branch _ l r) (Branch _ l' r') = mirror l r' && mirror r l'
+mirror Empty Empty = True
+mirror _ _ = False
+
+p57 :: [Int] -> Tree Int
+p57 xs = go $ sort xs
+  where go [] = Empty
+        go ns = let l = length ns `div` 2 in
+                    Branch (head $ drop l ns) (go (take l ns)) (go (drop (l+1) ns))
+
+p57' :: [Int] -> Tree Int
+p57' = foldl add Empty
+  where add Empty x = leaf x
+        add (Branch a l r) x | a < x     = Branch a (add l x) r
+                             | a > x     = Branch a l (add r x)
+                             | otherwise = Branch a l r
+
+p58 :: Int -> [Tree Char]
+p58 n = map (\t -> Branch 'x' t (flipTree t)) $ p55 (n `div` 2)
+  where flipTree (Branch x r l) = Branch x (flipTree l) (flipTree r)
+        flipTree Empty = Empty
+
+p59 :: a -> Int -> [Tree a]
+p59 x h | h == 0 = [Empty]
+        | h == 1 = [Branch x Empty Empty]
+        | h >= 2 = [Branch x l r | (hl, hr) <- [(h-2, h-1), (h-1, h-1), (h-1, h-2)]
+                                 , l        <- p59 x hl
+                                 , r        <- p59 x hr]
+        | otherwise = []
+
+-- p60 = undefined
+
+p61 :: Tree a -> Int
+p61 (Branch _ l r) = p61 l + p61 r
+p61 (Branch _ Empty Empty) = 1
+p61 Empty = 0
+
+p62 :: Tree a -> [a]
+p62 (Branch x Empty Empty) = [x]
+p62 (Branch _ l r) = p62 l ++ p62 r
+p62 Empty = []
+
+p63 :: Tree a -> [a]
+p63 (Branch _ Empty Empty) = []
+p63 (Branch x l r) = x : p63 l ++ p63 r
+p63 Empty = []
+
+p64 :: Tree a -> Int -> [a]
+p64 Empty _ = []
+p64 (Branch x l r) n | n > 1 = p64 l (n-1) ++ p64 r (n-1)
+                     | otherwise = [x]
+
+
